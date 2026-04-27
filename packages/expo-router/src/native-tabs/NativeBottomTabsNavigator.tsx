@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, useCallback, useMemo } from 'react';
+import React, { use, useCallback, useMemo, useRef } from 'react';
 
 import { NativeBottomTabsRouter } from './NativeBottomTabsRouter';
 import { NativeTabTrigger } from './NativeTabTrigger';
@@ -11,6 +11,7 @@ import type {
   NativeTabOptions,
   NativeTabsProps,
   NativeTabsViewTabItem,
+  OnTabChangeEventPayload,
 } from './types';
 import { convertIconColorPropToObject, convertLabelStylePropToObject } from './utils';
 import { withLayoutContext } from '../layouts/withLayoutContext';
@@ -119,14 +120,18 @@ export function NativeTabsNavigator({
     }
   }
   const focusedIndex = visibleFocusedTabIndex >= 0 ? visibleFocusedTabIndex : 0;
+  const provenanceRef = useRef(0);
 
   const onTabChange = useCallback(
-    (tabKey: string) => {
-      const descriptor = descriptors[tabKey];
+    ({ selectedKey, provenance }: OnTabChangeEventPayload) => {
+      // We should always send the last provenance we got from native side
+      provenanceRef.current = provenance;
+
+      const descriptor = descriptors[selectedKey];
       const route = descriptor.route;
       navigation.emit({
         type: 'tabPress',
-        target: tabKey,
+        target: selectedKey,
         data: {
           __internalTabsType: 'native',
         },
@@ -149,6 +154,10 @@ export function NativeTabsNavigator({
           {...rest}
           key={visibleTabsKeys}
           focusedIndex={focusedIndex}
+          // Provenance should only be sent with updates, and updates
+          // on JS side are only triggered by rerender, so passing ref
+          // here is ok.
+          provenance={provenanceRef.current}
           tabs={visibleTabs}
           onTabChange={onTabChange}
         />
